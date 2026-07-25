@@ -1,0 +1,46 @@
+name: loopfix-v142-deps-public
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/loopfix-v142-deps-public.yml'
+      - '.loopfix/v142-deps/package.json'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real project dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/v142-deps
+          mkdir -p /tmp/v142-deps
+          cp .loopfix/v142-deps/package.json /tmp/v142-deps/package.json
+          cd /tmp/v142-deps
+          npm install --no-audit --no-fund
+          node -e "for (const name of ['steamid','request','steamcommunity','steam-tradeoffer-manager','steam-user','telegraf']) { require(name); console.log(name + ': ok'); }"
+      - name: Pack and publish dependency environment on temporary branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .loopfix/v142-deps/v142-node-modules.tar.zst
+          tar -C /tmp/v142-deps -I 'zstd -19 -T0' -cf .loopfix/v142-deps/v142-node-modules.tar.zst node_modules package.json package-lock.json
+          sha256sum .loopfix/v142-deps/v142-node-modules.tar.zst | tee .loopfix/v142-deps/v142-node-modules.sha256
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .loopfix/v142-deps/v142-node-modules.tar.zst .loopfix/v142-deps/v142-node-modules.sha256
+          git commit -m 'ci: publish temporary v142 dependencies'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
