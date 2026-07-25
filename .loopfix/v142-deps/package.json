@@ -1,0 +1,32 @@
+{
+  "name": "whitebot",
+  "version": "1.7.5",
+  "description": "White Trade Bot",
+  "main": "./blue.js",
+  "author": "Non",
+  "dependencies": {
+    "@doctormckay/user-agents": "1.0.0",
+    "colour": "0.7.0",
+    "graceful-fs": "4.2.10",
+    "mkdirp": "1.0.4",
+    "node-window-manager": "2.2.4",
+    "p-queue": "6.6.2",
+    "request": "2.88.2",
+    "socks-proxy-agent": "5.0.1",
+    "steam-totp": "2.1.2",
+    "steam-tradeoffer-manager": "^2.0.0",
+    "steam-user": "^4.0.0",
+    "steamcommunity": "^3.0.0",
+    "steamid": "2.1.0",
+    "tunnel-agent": "0.6.0",
+    "telegraf": "3.38.0"
+  },
+  "scripts": {
+    "smoke:hardening": "node smoke-hardening.js",
+    "build": "node scripts/build-check.js",
+    "lint": "node scripts/lint-check.js",
+    "test": "node smoke-hardening.js",
+    "config:defaults": "node scripts/ensure-config-defaults.js",
+    "config:defaults:dry": "node scripts/ensure-config-defaults.js --dry-run"
+  }
+}
