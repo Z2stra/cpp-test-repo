@@ -1,0 +1,45 @@
+name: loopfix-v150-lock-patches
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .github/workflows/loopfix-v150-lock-patches.yml
+
+permissions:
+  contents: read
+
+jobs:
+  pack-locked-transitives:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Use project Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          registry-url: https://registry.npmjs.org
+
+      - name: Pack exact locked transitive packages
+        env:
+          npm_config_registry: https://registry.npmjs.org
+        run: |
+          mkdir -p locked-tarballs
+          cd locked-tarballs
+          npm pack @protobufjs/utf8@1.1.1 --ignore-scripts
+          npm pack @types/node@25.9.1 --ignore-scripts
+          npm pack adm-zip@0.5.17 --ignore-scripts
+          npm pack ip-address@10.2.0 --ignore-scripts
+          npm pack sax@1.6.0 --ignore-scripts
+          npm pack protobufjs@7.6.1 --ignore-scripts
+          npm pack undici-types@7.24.6 --ignore-scripts
+          sha256sum *.tgz > SHA256SUMS
+
+      - name: Upload exact locked tarballs
+        uses: actions/upload-artifact@v4
+        with:
+          name: bluebear-v150-locked-transitives
+          path: locked-tarballs
+          if-no-files-found: error
+          retention-days: 1
