@@ -1,0 +1,90 @@
+name: loopfix-v150-dependency-runtime
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/loopfix-v150-deps.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Use project Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          registry-url: https://registry.npmjs.org
+
+      - name: Create manifest-compatible dependency specification
+        run: |
+          mkdir -p runtime
+          cat > runtime/package.json <<'JSON'
+          {
+            "name": "bluebear-loopfix-v150-runtime",
+            "version": "1.0.0",
+            "private": true,
+            "dependencies": {
+              "@doctormckay/user-agents": "1.0.0",
+              "colour": "0.7.0",
+              "graceful-fs": "4.2.10",
+              "mkdirp": "1.0.4",
+              "node-window-manager": "2.2.4",
+              "p-queue": "6.6.2",
+              "request": "2.88.2",
+              "socks-proxy-agent": "5.0.1",
+              "steam-totp": "2.1.2",
+              "steam-tradeoffer-manager": "2.13.0",
+              "steam-user": "4.29.3",
+              "steamcommunity": "3.50.0",
+              "steamid": "2.1.0",
+              "tunnel-agent": "0.6.0",
+              "telegraf": "3.38.0"
+            }
+          }
+          JSON
+
+      - name: Install manifest-compatible dependency tree
+        working-directory: runtime
+        env:
+          npm_config_registry: https://registry.npmjs.org
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Verify runtime modules load
+        working-directory: runtime
+        run: |
+          node - <<'NODE'
+          const modules = [
+            'binarykvparser',
+            'steamid',
+            'request',
+            'steamcommunity',
+            'steam-tradeoffer-manager',
+            'graceful-fs',
+            'mkdirp',
+            'steam-totp',
+            'colour',
+            '@doctormckay/user-agents',
+            'p-queue'
+          ];
+          for (const name of modules) {
+            require(name);
+            console.log(`${name}: ok`);
+          }
+          NODE
+
+      - name: Package Linux x64 Node 22 runtime
+        run: tar -czf bluebear-node-modules-linux-x64-node22.tgz -C runtime node_modules package.json package-lock.json
+
+      - name: Upload runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bluebear-node-modules-v150
+          path: bluebear-node-modules-linux-x64-node22.tgz
+          if-no-files-found: error
+          retention-days: 1
