@@ -1,6 +1,11 @@
 name: loopfix-v150-dependency-runtime
 
 on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .github/workflows/loopfix-v150-deps.yml
   push:
     branches:
       - master
