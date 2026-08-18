@@ -1,0 +1,91 @@
+name: BlueBot v2.0.170 test dependencies
+
+on:
+  push:
+    branches:
+      - bluebot-v2.0.170-test-deps-20260818
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-node-modules:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Use exact local Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+          cache-dependency-path: test-env/package-lock.json
+
+      - name: Create isolated dependency manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-env
+          cat > test-env/package.json <<'JSON'
+          {
+            "name": "bluebot-v2.0.170-test-env",
+            "private": true,
+            "version": "2.0.170",
+            "dependencies": {
+              "better-sqlite3": "11.10.0",
+              "p-queue": "6.6.2",
+              "steamcommunity": "^3.0.0",
+              "steamid": "1.1.3"
+            }
+          }
+          JSON
+          cd test-env
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install manifest dependencies and native binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd test-env
+          npm ci --omit=dev --no-audit --no-fund
+
+      - name: Verify native module and required smoke modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd test-env
+          node - <<'NODE'
+          const Database = require('better-sqlite3');
+          const db = new Database(':memory:');
+          db.exec('CREATE TABLE t (id INTEGER PRIMARY KEY, value TEXT NOT NULL)');
+          db.prepare('INSERT INTO t(value) VALUES (?)').run('ok');
+          const row = db.prepare('SELECT value FROM t WHERE id = 1').get();
+          if (!row || row.value !== 'ok') throw new Error('better-sqlite3 query verification failed');
+          db.close();
+          require('p-queue');
+          require('steamcommunity');
+          require('steamid');
+          console.log('module-load-and-sqlite-query: ok');
+          NODE
+          node -p "JSON.stringify({node:process.version,modules:process.versions.modules,platform:process.platform,arch:process.arch})"
+          npm ls --depth=0
+
+      - name: Package isolated node_modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -C test-env -czf bluebot-v2.0.170-node22.16.0-linux-x64-test-env.tar.gz node_modules package.json package-lock.json
+          sha256sum bluebot-v2.0.170-node22.16.0-linux-x64-test-env.tar.gz > bluebot-v2.0.170-node22.16.0-linux-x64-test-env.tar.gz.sha256
+
+      - name: Upload test environment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bluebot-v2.0.170-node22.16.0-linux-x64-test-env
+          path: |
+            bluebot-v2.0.170-node22.16.0-linux-x64-test-env.tar.gz
+            bluebot-v2.0.170-node22.16.0-linux-x64-test-env.tar.gz.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
