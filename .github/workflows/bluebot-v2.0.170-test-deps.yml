@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - bluebot-v2.0.170-test-deps-20260818
+  pull_request:
+    branches:
+      - master
 
 permissions:
   contents: read
